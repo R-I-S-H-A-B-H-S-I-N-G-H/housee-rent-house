@@ -5,17 +5,27 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SharedElement } from 'react-navigation-shared-element'
 import { colors } from '../utils/Styles'
 
-const { height } = Dimensions.get('screen')
+const { height, width } = Dimensions.get('screen')
+
+const HEIGHT_IMAGE = height * 0.38
+const WIDTH_IMAGE = width
+
+const IMAGE_BOX = 60
+const MARGIN = 18
 
 const DetailScreen = props => {
   const insets = useSafeAreaInsets()
   const { item } = props.route.params ?? {}
+  const flatlistRef = useRef()
+  const thumbRef = useRef()
 
   //   const [indexImg, setIndexImg] = useState(0)
 
   const [isFavorite, setIsFavorite] = useState(false)
+  const [isActiveIndex, setIsActiveIndex] = useState(0)
 
   const opacity = useRef(new Animated.Value(0)).current
+  const scrollX = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     Animated.timing(opacity, {
@@ -26,12 +36,63 @@ const DetailScreen = props => {
     }).start()
   }, [])
 
+  const scrollToIndex = (index) => {
+    setIsActiveIndex(index)
+    flatlistRef?.current?.scrollToIndex({ animated: true, index: index })
+    if (index * (IMAGE_BOX + (MARGIN * 2) - (IMAGE_BOX / 2)) > width / 2) {
+      thumbRef?.current?.scrollTo({
+        x: index * (IMAGE_BOX + (MARGIN * 2) - (IMAGE_BOX / 2)),
+        animated: true
+      })
+    } else {
+      thumbRef?.current?.scrollTo({
+        x: 0,
+        animated: true
+      })
+    }
+  }
+
   return (
     <View style={styles.container}>
       {/* Image */}
       <SharedElement id={`${item.id}.img`}>
-        <Image source={{ uri: item.images[0] }} style={{ width: '100%', height: height * 0.34 }} />
+        <Animated.FlatList
+          ref={flatlistRef}
+          data={item.images}
+          keyExtractor={(_, index) => index.toString()}
+          horizontal
+          bounces={false}
+          decelerationRate='fast'
+          onMomentumScrollEnd={ev => scrollToIndex(Math.floor(ev.nativeEvent.contentOffset.x / width))}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: true })}
+          pagingEnabled
+          getItemLayout={(_, index) => ({
+            length: WIDTH_IMAGE,
+            offset: WIDTH_IMAGE * index,
+            index
+          })}
+          showsHorizontalScrollIndicator={false}
+          renderItem={({ item, _ }) => {
+            return (
+              <View style={{ width: WIDTH_IMAGE, height: HEIGHT_IMAGE }}>
+                <Image style={{ width: '100%', height: '100%' }} source={{ uri: item }} />
+              </View>
+            )
+          }}
+        />
       </SharedElement>
+      {/* List Image */}
+      <View style={{ position: 'absolute', top: (HEIGHT_IMAGE - (HEIGHT_IMAGE * 0.25)), paddingHorizontal: 12 }}>
+        <Animated.ScrollView ref={thumbRef} horizontal showsHorizontalScrollIndicator={false}>
+          {item.images.map((item, index) => {
+            return (
+              <TouchableOpacity onPress={() => scrollToIndex(index)} key={index.toString()} style={{ width: IMAGE_BOX, height: IMAGE_BOX, marginRight: MARGIN, borderColor: 'white', borderWidth: isActiveIndex === index ? 2 : 0 }}>
+                <Image source={{ uri: item }} style={{ width: '100%', height: '100%' }} />
+              </TouchableOpacity>
+            )
+          })}
+        </Animated.ScrollView>
+      </View>
       {/* Header */}
       <Animated.View style={{ flexDirection: 'row', alignItems: 'center', position: 'absolute', top: Math.round(insets.top + 10), left: 18, right: 18, justifyContent: 'space-between', opacity: opacity }}>
         <TouchableOpacity onPress={() => { props.navigation.goBack() }} activeOpacity={0.8} style={{ width: 45, height: 45, borderRadius: 45 / 2, backgroundColor: 'white', alignItems: 'center', justifyContent: 'center' }}>
