@@ -317,7 +317,7 @@ const NearbyList = [
 			insurance: 56,
 		},
 		owner: {
-			name: "Andrew Cano",
+			name: "Ram kumar",
 			rating: 4.8,
 		},
 		images: [
